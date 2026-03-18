@@ -6,24 +6,27 @@ from pydantic import BaseModel, Field
 from typing import Optional,List
 import re
 import ast
-
+from datetime import datetime, timedelta
 from src.utils.log_utils import setup_logger
 from src.tasks.paper_search import PaperSearcher
 from src.core.state_models import State,ExecutionState
 from src.core.prompts import search_agent_prompt
 from src.core.state_models import BackToFrontData
-
+from src.tasks.download_papers import submit_download_tasks
 from src.core.model_client import create_search_model_client
+from src.infra.redis_runtime import incr_pending,get_pending
+import asyncio
 
 logger = setup_logger(__name__)
 
 
 model_client = create_search_model_client()
 
+
 # 创建一个查询条件类，包括查询内容、主题、时间范围等信息，用于存储用户的查询需求
 class SearchQuery(BaseModel):
     """查询条件类，存储用户查询需求"""
-    querys: List[str] = Field(default=None, description="查询条件列表")
+    querys: List[str] = Field(default=list, description="查询条件列表")
     start_date: Optional[str] = Field(default=None, description="开始时间, 格式: YYYY-MM-DD")
     end_date: Optional[str] = Field(default=None, description="结束时间, 格式: YYYY-MM-DD")
 
@@ -57,6 +60,7 @@ async def search_node(state: State) -> State:
     
     """搜索论文节点"""
     state_queue = None
+    logger.info(f"[Job {state['state_queue'].job_id}] 搜索节点开始执行")
     try:
         state_queue = state["state_queue"]
         current_state = state["value"]
@@ -64,34 +68,59 @@ async def search_node(state: State) -> State:
         await state_queue.put(BackToFrontData(step=ExecutionState.SEARCHING,state="initializing",data=None))
 
         prompt = f"""
-        请根据用户查询需求，生成检索查询条件。
-        用户查询需求：{current_state.user_request}
-        """
+            用户输入:{current_state.user_request}
+            基准时间:{datetime.now().strftime("%Y-%m-%d")}
+            """
         response = await search_agent.run(task = prompt)
-        search_query = response.messages[-1].content
-        await state_queue.put(BackToFrontData(step=ExecutionState.SEARCHING,state="user_review",data=f"{search_query}"))
         
-        result = await userProxyAgent.on_messages(
-            [TextMessage(content="请人工审核：查询条件是否符合？", source="AI")],
-            cancellation_token=CancellationToken()
-        )
+        search_query = response.messages[-1].content
+        
+        #await state_queue.put(BackToFrontData(step=ExecutionState.SEARCHING,state="user_review",data=f"{search_query}"))
+        # logger.info("send to human review...") 
+        
+        # result = await userProxyAgent.on_messages(
+        #     [TextMessage(content="请人工审核：查询条件是否符合？", source="AI")],
+        #     cancellation_token=CancellationToken()
+        # )
+        
+        result = TextMessage(content=str(search_query), source="fallback")
+        # logger.info("human replied: %s", result.content)
         search_query = parse_search_query(result.content)
 
         # 调用检索服务
+    
         paper_searcher = PaperSearcher()
         results = await paper_searcher.search_papers(
             querys = search_query.querys,
             start_date = search_query.start_date,
             end_date = search_query.end_date,
         )
-        # [{'paper_id': '2411.11607v2', 'title': 'Performance evaluation of a ROS2 based Automated Driving System', 'authors': [...], 'summary': 'Automated driving is currently a prominent area of scientific work. In the\nfuture, highly automated driving and new Advanced Driver Assistance Systems\nwill become reality. While Advanced Driver Assistance Systems and automated\ndriving functions for certain domains are already commercially available,\nubiquitous automated driving in complex scenarios remains a subject of ongoing\nresearch. Contrarily to single-purpose Electronic Control Units, the software\nfor automated driving is often executed on high performance PCs. The Robot\nOperating System 2 (ROS2) is commonly used to connect components in an\nautomated driving system. Due to the time critical nature of automated driving\nsystems, the performance of the framework is especially important. In this\npaper, a thorough performance evaluation of ROS2 is conducted, both in terms of\ntimeliness and error rate. The results show that ROS2 is a suitable framework\nfor automated driving systems.', 'published': 2024, 'published_date': '2024-11-18T14:29:22+00:00', 'url': 'http://arxiv.org/abs/2411.11607v2', 'pdf_url': 'http://arxiv.org/pdf/2411.11607v2', 'primary_category': 'cs.RO', 'categories': [...], 'doi': '10.5220/0012556800003702'}, {'paper_id': '2307.06258v1', 'title': 'Connected Dependability Cage Approach for Safe Automated Driving', 'authors': [...], 'summary': "Automated driving systems can be helpful in a wide range of societal\nchallenges, e.g., mobility-on-demand and transportation logistics for last-mile\ndelivery, by aiding the vehicle driver or taking over the responsibility for\nthe dynamic driving task partially or completely. Ensuring the safety of\nautomated driving systems is no trivial task, even more so for those systems of\nSAE Level 3 or above. To achieve this, mechanisms are needed that can\ncontinuously monitor the system's operating conditions, also denoted as the\nsystem's operational design domain. This paper presents a safety concept for\nautomated driving systems which uses a combination of onboard runtime\nmonitoring via connected dependability cage and off-board runtime monitoring\nvia a remote command control center, to continuously monitor the system's ODD.\nOn one side, the connected dependability cage fulfills a double functionality:\n(1) to monitor continuously the operational design domain of the automated\ndriving system, and (2) to transfer the responsibility in a smooth and safe\nmanner between the automated driving system and the off-board remote safety\ndriver, who is present in the remote command control center. On the other side,\nthe remote command control center enables the remote safety driver the\nmonitoring and takeover of the vehicle's control. We evaluate our safety\nconcept for automated driving systems in a lab environment and on a test field\ntrack and report on results and lessons learned.", 'published': 2023, 'published_date': '2023-07-12T15:55:48+00:00', 'url': 'http://arxiv.org/abs/2307.06258v1', 'pdf_url': 'http://arxiv.org/pdf/2307.06258v1', 'primary_category': 'cs.RO', 'categories': [...], 'doi': None}]
+        #20篇论文 list [{'paper_id': '2411.15594v6', 'title': 'A Survey on LLM-as-a-Judge', 'authors': ['Jiawei Gu', 'Xuhui Jiang', 'Zhichao Shi', 'Hexiang Tan', 'Xuehao Zhai', 'Chengjin Xu', 'Wei Li', 'Yinghan Shen', 'Shengjie Ma', 'Honghao Liu', 'Saizhuo Wang', 'Kun Zhang', 'Yuanzhuo Wang', 'Wen Gao', 'Lionel Ni', 'Jian Guo'], 'summary': 'Accurate and consistent evaluation is crucial for decision-making across numerous fields, yet it remains a challenging task due to inherent subjectivity, variability, and scale. Large Language Models (LLMs) have achieved remarkable success across diverse domains, leading to the emergence of "LLM-as-a-Judge," where LLMs are employed as evaluators for complex tasks. With their ability to process diverse data types and provide scalable, cost-effective, and consistent assessments, LLMs present a compelling alternative to traditional expert-driven evaluations. However, ensuring the reliability of LLM-as-a-Judge systems remains a significant challenge that requires careful design and standardization. This paper provides a comprehensive survey of LLM-as-a-Judge, addressing the core question: How can reliable LLM-as-a-Judge systems be built? We explore strategies to enhance reliability, including improving consistency, mitigating biases, and adapting to diverse assessment scenarios. Additionally, we propose methodologies for evaluating the reliability of LLM-as-a-Judge systems, supported by a novel benchmark designed for this purpose. To advance the development and real-world deployment of LLM-as-a-Judge systems, we also discussed practical applications, challenges, and future directions. This survey serves as a foundational reference for researchers and practitioners in this rapidly evolving field.', 'published': 2024, 'published_date': '2024-11-23T16:03:35+00:00', 'url': 'http://arxiv.org/abs/2411.15594v6', 'pdf_url': 'https://arxiv.org/pdf/2411.15594v6', 
+        # 'primary_category': 'cs.CL', 'categories': ['cs.CL', 'cs.AI'], 'doi': None, 'score': 0.712576687335968, 'citations': 1092} 。。。。。]       
+       
         current_state.search_results = results
+        logger.info(f"开始下载 {len(results)} 篇论文")
+
+        await submit_download_tasks(results,state_queue)
+        r = state_queue.r
+        pending = await get_pending(r, state_queue.job_id)
+        while pending is None or int(pending) > len(results):
+            logger.info(f"[Job {state_queue.job_id}] 还有 {pending-len(results)} 个 下载未完成，等待中...")
+            await asyncio.sleep(5)  # 可调整等待间隔
+            pending = await get_pending(r, state_queue.job_id)
+        logger.info(f"[Job {state_queue.job_id}] 所有论文下载完成,开始解析")
+        
         if len(results) > 0:
-            await state_queue.put(BackToFrontData(step=ExecutionState.SEARCHING,state="completed",data=f"论文搜索完成，共找到 {len(results)} 篇论文"))
+            await state_queue.put(BackToFrontData(step=ExecutionState.SEARCHING,state="completed",data=f"论文搜索完成，返回最相关的 {len(results)} 篇论文"))
         else:
             await state_queue.put(BackToFrontData(step=ExecutionState.SEARCHING,state="error",data="没有找到相关论文,请尝试其他查询条件"))
             current_state.error.search_node_error = "没有找到相关论文,请尝试其他查询条件"
+            
+        
         return {"value": current_state}
+    
+    
+    
             
     except Exception as e:
         err_msg = f"Search failed: {str(e)}"

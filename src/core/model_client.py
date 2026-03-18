@@ -202,6 +202,9 @@ def create_cluster_embedding_client() -> OpenAI:
     """创建用于聚类嵌入的模型客户端实例"""
     return create_embedding_client("cluster-embedding-model")
 
+def create_rerank_model_client() -> OpenAIChatCompletionClient:
+    """创建用于重排序的模型客户端实例"""
+    return create_model_client("rerank-model")
 
 # ===================重排序模型===================
 # import json

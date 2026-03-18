@@ -5,36 +5,38 @@ model-provider:
   - dashscope
   - ark
 
-# 项目默认使用的模型和嵌入模型配置
-# default-model:
-#   model-provider: siliconflow
-#   model: Qwen/Qwen3-32B
+#项目默认使用的模型和嵌入模型配置
 default-model:
-  model-provider: ark
-  model: doubao-seed-1-6-thinking-250715
+  model-provider: siliconflow
+  model: deepseek-ai/DeepSeek-V3.2
+
+# default-model:
+#   model-provider: ark
+#   model: doubao-seed-1-6-thinking-250715
+
+# default-embedding-model:
+#   model-provider: dashscope
+#   model: text-embedding-v4
+#   dimension: 1024
 
 default-embedding-model:
-  model-provider: dashscope
-  model: text-embedding-v4
+  model-provider: siliconflow
+  model: Qwen/Qwen3-Embedding-8B
   dimension: 1024
 
-# embedding-model:
-#   model-provider: siliconflow
-#   model: Qwen/Qwen3-Embedding-8B
-#   dimension: 1024
-embedding-model:
-  model-provider: dashscope
-  model: text-embedding-v4
-  dimension: 1024
+rerank-model:
+  model-provider: siliconflow
+  model: Qwen/Qwen3-Rerank-8B
+
 
 # 项目模块具体使用的模型和嵌入模型配置（可选）
 reading-model:
   model-provider: siliconflow
-  model: Qwen/Qwen3-32B
+  model: deepseek-ai/DeepSeek-V3.2
 
 writing-model:
   model-provider: siliconflow
-  model: Qwen/Qwen3-32B
+  model: deepseek-ai/DeepSeek-V3.2
 
 chroma-embedding-model:
   model-provider: siliconflow

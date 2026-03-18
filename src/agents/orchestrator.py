@@ -56,10 +56,6 @@ class PaperAgentOrchestrator:
         elif err.reading_node_error is None and current_step == ExecutionState.READING:
             return "analyse_node"
         elif err.analyse_node_error is None and current_step == ExecutionState.ANALYZING:
-            return "writing_node"
-        elif err.writing_node_error is None and current_step == ExecutionState.WRITING:
-            return "report_node"
-        elif err.report_node_error is None and current_step == ExecutionState.REPORTING:
             return END
         else:
             return "handle_error_node"
@@ -73,8 +69,8 @@ class PaperAgentOrchestrator:
         builder.add_node("search_node", search_node)
         builder.add_node("reading_node", reading_node)
         builder.add_node("analyse_node", analyse_node)
-        builder.add_node("writing_node", writing_node)
-        builder.add_node("report_node", report_node)
+        # builder.add_node("writing_node", writing_node)
+        # builder.add_node("report_node", report_node)
         builder.add_node("handle_error_node", self.handle_error_node)
 
         builder.set_entry_point("search_node")
@@ -84,8 +80,8 @@ class PaperAgentOrchestrator:
         builder.add_conditional_edges("search_node", self.condition_handler)
         builder.add_conditional_edges("reading_node", self.condition_handler)
         builder.add_conditional_edges("analyse_node", self.condition_handler)
-        builder.add_conditional_edges("writing_node", self.condition_handler)
-        builder.add_conditional_edges("report_node", self.condition_handler)
+        # builder.add_conditional_edges("writing_node", self.condition_handler)
+        # builder.add_conditional_edges("report_node", self.condition_handler)
         builder.add_edge("handle_error_node", END)
         
         return builder.compile()

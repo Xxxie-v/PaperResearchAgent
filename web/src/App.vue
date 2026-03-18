@@ -232,7 +232,7 @@ const submitRequest = () => {
       showThinking: true, // 控制思考部分的展开状态
     };
     steps.value.push(stepElement);
-    if (step.startsWith("section_writing")) {
+    if (step.startsWith("section_writing")||step.startsWith("analyzing")) {
       // writing步骤添加子块数组
       activeSubSteps.value.set(step, stepElement);
     }else{
@@ -297,7 +297,7 @@ const submitRequest = () => {
 
   // 处理「阶段完成」状态：更新当前活跃步骤的内容
   const handleComplete = (step, data) => {
-    if(step.startsWith("section_writing")){
+    if(step.startsWith("section_writing") || step.startsWith("analyzing")){
       currentActiveStep.value = activeSubSteps.value.get(step)
     }
     if (!currentActiveStep.value || currentActiveStep.value.step !== step) {
