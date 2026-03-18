@@ -92,6 +92,6 @@ python feeder_main.py //总体调度
 python worker_main.py //总控
 npm run dev //前端
 
-
+![截图说明](image.png)
 
 
