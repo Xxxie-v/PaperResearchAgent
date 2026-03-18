@@ -68,9 +68,9 @@ PaperResearchAgent 的核心设计是一个 **论文搜索 → 阅读 → 分析
 
 ```text
 [Search Node] --> [Reading Node] --> [Analyse Node]
+```
 
-
-## 快速开始（Quick Start）
+### 🔹 快速开始（逻辑流）
 
 ### 1️⃣ 环境准备
 
