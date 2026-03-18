@@ -1,3 +1,4 @@
+# Paper Research Agent
 **PaperResearchAgent** 是一个基于 LLM 的科研辅助工具，用于自动化论文搜索、解析、分析和报告生成。它支持知识库管理、PDF 文件上传与处理，以及前端交互式报告展示。
 
 ---
@@ -80,7 +81,7 @@ cd PaperResearchAgent
 
 2.环境配置：
 pip install -r requirements.txt
-复制 .env.example 为 .env 并填写您的API密钥
+复制 .env.example 为 .env 并填写您的API密钥，其中谷歌学术检索借用SERPAPI，需要申请API密钥
 修改 models.yaml 中的参数
 
 3.运行系统：

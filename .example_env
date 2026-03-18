@@ -3,3 +3,6 @@ DASHSCOPE_API_KEY=xxxxxxxxxx
 OPENAI_API_KEY=xxx
 
 ARXIV_API_URL=http://export.arxiv.org/api/query
+USE_CITE_RERANK="True"// 需要借助谷歌学术
+SERPAPI_URL=https://serpapi.com/search.json
+SERPAPI_API_KEY=xxxxxxxx
