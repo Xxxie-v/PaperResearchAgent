@@ -72,8 +72,6 @@ PaperResearchAgent 的核心设计是一个 **论文搜索 → 阅读 → 分析
 
 ### 🔹 快速开始（逻辑流）
 
-### 1️⃣ 环境准备
-
 1. 克隆仓库：
 ```bash
 git clone https://github.com/Xxxie-v/PaperResearchAgent.git
@@ -91,7 +89,7 @@ python analyse_worker.py //分析调度
 python feeder_main.py //总体调度
 python worker_main.py //总控
 npm run dev //前端
-
+```
 ![截图说明](image.png)
 
 
